@@ -1,0 +1,202 @@
+---
+title: "Data Analysis"
+author: "Kevin Lin"
+date: "2019/01/02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(ggplot2)
+require(grid)
+require(gridExtra)
+require(plyr)
+require(rpart)
+require(randomForest)
+require(caret)
+require(gbm)
+require(survival)
+require(pROC)
+require(DMwR)
+require(scales)
+```
+
+
+### 路徑設定與資料載入
+```{r echo = FALSE}
+setwd("/Users/kevin/Desktop/Interview")
+data <- read.csv("Data.csv",header = TRUE)
+summary(data)
+```
+#### 基本訊息：
+- 員工離職與不離職的比例約為 1：6
+- 員工平均年齡約為37歲
+- 員工平均收入約為6,500美元，中位數為4919美元。
+
+### 描述性統計
+1. 基本訊息與離職與否的關係：
+
+```{r echo = FALSE}
+g1 <- ggplot(data, aes(x = Age, fill = Attrition)) +
+  geom_density(alpha = 0.7)
+g2 <- ggplot(data, aes(x = NumCompaniesWorked, fill = Attrition)) +
+  geom_density(alpha = 0.7)
+g3 <- ggplot(data, aes(x = YearsAtCompany, fill = Attrition)) +
+  geom_density(alpha = 0.7)
+g4 <- ggplot(data, aes(x = TotalWorkingYears, fill = Attrition)) +
+  geom_density(alpha = 0.7)
+grid.arrange(g1, g2, g3, g4, ncol = 2, nrow = 2)
+```
+
+- 年齡較低的流失率較高，主要集中在小於30歲的員工
+- 在任職超過5家公司的員工???體中，該類員工的離職率高
+- 在公司工作時間短的員工流失率高，年數小於4年的較為集中
+- 工齡低的員工流失率高，集中在工齡小於7年左右的員工
+
+```{r echo = FALSE}
+g5 <- ggplot(data, aes(x= Gender,fill = Attrition)) +
+  geom_bar(position = "fill") +
+  labs(y="Percentage") + scale_y_continuous(labels=percent)
+g6 <-ggplot(data, aes(x= JobLevel,fill = Attrition)) +
+  geom_bar(position = "fill") +
+  labs(y="Percentage") + scale_y_continuous(labels=percent)
+g7 <- ggplot(data, aes(x= Education,fill = Attrition)) +
+  geom_bar(position = "fill") +
+  labs(y="Percentage") +  scale_y_continuous(labels=percent) 
+g8 <- ggplot(data, aes(x= Department,fill = Attrition)) +
+  geom_bar(position = "fill") +
+  labs(y="Percentage") + scale_y_continuous(labels=percent)
+grid.arrange(g5, g6, g7, g8, ncol = 2, nrow = 2)
+```
+
+- 低等級職位的員工的離職率高，主要集中在等級為1的職位
+- 學歷和性別似乎沒有差異
+- 銷售部門的員工較其他部門員工的流失率高
+
+2. 收入與離職與否的關係
+
+```{r echo = FALSE}
+g9 <- ggplot(data, aes(x = MonthlyIncome, fill = Attrition)) +
+  geom_density(alpha = 0.7)
+g10 <- ggplot(data, aes(x= JobInvolvement, fill = Attrition)) +
+  geom_bar(position = "fill") +
+  labs(y="Percentage") +  scale_y_continuous(labels=percent)
+grid.arrange(g9, g10, ncol = 2)
+```
+
+- 收入低的員工離職率高，收入在10000美元左右的員工的離職率也不低
+- 工作投入低的員工離職率高
+
+```{r echo = FALSE}
+ggplot(data, aes(x= JobInvolvement, y=MonthlyIncome, group = JobInvolvement)) +
+  geom_boxplot(aes(fill = factor(..x..)),alpha=0.7) +
+  theme(legend.position="none",plot.title = element_text(hjust = 0.5)) +
+  facet_grid(~Attrition) +
+ ggtitle("Attrition")
+```
+
+- 在離職員工中,不同工作投入程度的員工所得薪資分布相似
+
+3. 福利、升遷與離職與否的關係
+
+```{r echo = FALSE}
+g11 <- ggplot(data, aes(x = PercentSalaryHike, fill = Attrition)) +
+  geom_density(alpha = 0.7) 
+g12 <- ggplot(data, aes(x= TrainingTimesLastYear, fill = Attrition)) +
+  geom_bar(position = "fill") +
+  labs(y="Percentage") +  scale_y_continuous(labels=percent) 
+g13 <- ggplot(data, aes(x = YearsSinceLastPromotion, fill = Attrition)) +
+  geom_density(alpha = 0.7) 
+g14 <- ggplot(data, aes(x= StockOptionLevel, fill = Attrition)) +
+  geom_bar(position = "fill") +
+  labs(y="Percentage") +  scale_y_continuous(labels=percent)
+grid.arrange(g11, g12, g13, g14, ncol = 2)
+```
+
+- 沒有員工優先認股權的員工離職率較高
+- 上一年沒有參與培訓的員工離職率高
+
+4. 滿意度相關變量與員工離職與否的關係
+
+```{r echo = FALSE}
+g15 <- ggplot(data, aes(x= JobSatisfaction, fill = Attrition)) +
+  geom_bar(position = "fill") +
+  labs(y="Percentage") +  scale_y_continuous(labels=percent) 
+g16 <- ggplot(data, aes(x= RelationshipSatisfaction, fill = Attrition)) +
+  geom_bar(position = "fill") +
+  labs(y="Percentage") +  scale_y_continuous(labels=percent)
+g17 <- ggplot(data, aes(x= EnvironmentSatisfaction, fill = Attrition)) +
+  geom_bar(position = "fill") +
+  labs(y="Percentage") +  scale_y_continuous(labels=percent)
+grid.arrange(g15, g16, g17,  ncol = 2)
+```
+ 
+- 無論何種滿意度，滿意度較低員工的離職率大於滿意度較高員工
+ 
+5. 工作生活平衡與員工離職與否的關係
+```{r echo = FALSE}
+g18 <- ggplot(data, aes(x= OverTime, fill = Attrition)) +
+  geom_bar(position = "fill") +
+  labs(y="Percentage") +  scale_y_continuous(labels=percent)
+g19 <- ggplot(data, aes(x= WorkLifeBalance, fill = Attrition)) +
+  geom_bar(position = "fill") +
+  labs(y="Percentage") +  scale_y_continuous(labels=percent)
+g20 <- ggplot(data, aes(x= BusinessTravel, fill = Attrition)) +
+  geom_bar(position = "fill") +
+  labs(y="Percentage") +  scale_y_continuous(labels=percent)
+g21 <- ggplot(data, aes(x = DistanceFromHome, fill = Attrition)) +
+  geom_density(alpha = 0.7)
+grid.arrange(g18, g19, g20, g21,  ncol = 2)
+```
+
+- 經常加班的員工相對於不加班的員工離職率非常高
+- 認為工作與生活平衡水平為1的員工離職率較高
+- 頻繁出差的員工離職率較高高
+- 距離家較遠的員工離職率較高
+
+### 模型建立
+- Random Forest
+```{r echo = FALSE}
+set.seed(3999) 
+# 刪除不需要的幾個變量
+levels(data$JobRole) <- c("HC", "HR", "Lab", "Man", "MDir", "RsD", "RsSci", "SlEx", "SlRep")
+levels(data$EducationField) <- c("HR", "LS", "MRK", "MED", "NA", "TD")
+data <- data[c(-9,-10,-22,-27)]
+# 創建訓練集和測試集
+n <- nrow(data)
+rnd <- sample(n, n * .70)
+train <- data[rnd,]
+test <- data[-rnd,]
+# 建模
+dtree <- rpart(Attrition ~., data = train)
+preds <- predict(dtree, test, type = "class")
+rocv <- roc(as.numeric(test$Attrition), as.numeric(preds))
+rocv$auc 
+prop.table(table(test$Attrition, preds, dnn = c("Actual", "Predicted")), 1)
+```
+
+- GBM
+```{r echo = FALSE}
+set.seed(3799)
+# 加權GBM
+# 設置權重參數，提高離開???體的樣本權重，平衡樣本
+model_weights <- ifelse(train$Attrition == "No", 
+                      (1/table(train$Attrition)[1]),
+                      (1/table(train$Attrition)[2])) 
+ctrl <- trainControl(method = "cv",
+                     number = 10,
+                     summaryFunction = twoClassSummary,
+                     classProbs = TRUE) 
+weightedfit <- train(Attrition ~ .,
+                    data = train,
+                    method = "gbm",
+                    verbose = FALSE,
+                    weights = model_weights,
+                    metric = "ROC", 
+                    trControl = ctrl)
+weightedpreds <- predict(weightedfit, test)
+rocweight <- roc(as.numeric(test$Attrition), as.numeric(weightedpreds))
+rocweight$auc
+prop.table(table(test$Attrition, weightedpreds, dnn = c("Actual", "Predicted")),1)
+varImp(weightedfit)
+```
