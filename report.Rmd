@@ -1,7 +1,6 @@
 ---
-title: "Data Analysis"
+title: "Staff Turnover Analysis"
 author: "Kevin Lin"
-date: "2019/01/02"
 output: html_document
 ---
 
@@ -21,21 +20,23 @@ require(DMwR)
 require(scales)
 ```
 
+### Part 1. 資料描述性統計：
+首先，針對資料各欄位觀察其資料分布可初步了解資料概況
 
-### 路徑設定與資料載入
 ```{r echo = FALSE}
 setwd("/Users/kevin/Desktop/Interview")
 data <- read.csv("Data.csv",header = TRUE)
 summary(data)
 ```
-#### 基本訊息：
+#### 從描述性統計可得知一些基本訊息：
 - 員工離職與不離職的比例約為 1：6
 - 員工平均年齡約為37歲
 - 員工平均收入約為6,500美元，中位數為4919美元。
 
-### 描述性統計
-1. 基本訊息與離職與否的關係：
+### Part 2. 探索式資料分析：
+在對資料有初步了解後會針對一些變數購面來觀察其與離職的關係
 
+#### 1. 基本訊息與離職與否的關係：
 ```{r echo = FALSE}
 g1 <- ggplot(data, aes(x = Age, fill = Attrition)) +
   geom_density(alpha = 0.7)
@@ -48,6 +49,7 @@ g4 <- ggplot(data, aes(x = TotalWorkingYears, fill = Attrition)) +
 grid.arrange(g1, g2, g3, g4, ncol = 2, nrow = 2)
 ```
 
+##### 結論：
 - 年齡較低的流失率較高，主要集中在小於30歲的員工
 - 在任職超過5家公司的員工???體中，該類員工的離職率高
 - 在公司工作時間短的員工流失率高，年數小於4年的較為集中
@@ -69,12 +71,12 @@ g8 <- ggplot(data, aes(x= Department,fill = Attrition)) +
 grid.arrange(g5, g6, g7, g8, ncol = 2, nrow = 2)
 ```
 
+##### 結論：
 - 低等級職位的員工的離職率高，主要集中在等級為1的職位
 - 學歷和性別似乎沒有差異
 - 銷售部門的員工較其他部門員工的流失率高
 
-2. 收入與離職與否的關係
-
+#### 2. 收入與離職與否的關係
 ```{r echo = FALSE}
 g9 <- ggplot(data, aes(x = MonthlyIncome, fill = Attrition)) +
   geom_density(alpha = 0.7)
@@ -84,6 +86,7 @@ g10 <- ggplot(data, aes(x= JobInvolvement, fill = Attrition)) +
 grid.arrange(g9, g10, ncol = 2)
 ```
 
+##### 結論：
 - 收入低的員工離職率高，收入在10000美元左右的員工的離職率也不低
 - 工作投入低的員工離職率高
 
@@ -95,10 +98,10 @@ ggplot(data, aes(x= JobInvolvement, y=MonthlyIncome, group = JobInvolvement)) +
  ggtitle("Attrition")
 ```
 
+##### 結論：
 - 在離職員工中,不同工作投入程度的員工所得薪資分布相似
 
-3. 福利、升遷與離職與否的關係
-
+#### 3. 福利、升遷與離職與否的關係
 ```{r echo = FALSE}
 g11 <- ggplot(data, aes(x = PercentSalaryHike, fill = Attrition)) +
   geom_density(alpha = 0.7) 
@@ -113,10 +116,11 @@ g14 <- ggplot(data, aes(x= StockOptionLevel, fill = Attrition)) +
 grid.arrange(g11, g12, g13, g14, ncol = 2)
 ```
 
+##### 結論：
 - 沒有員工優先認股權的員工離職率較高
 - 上一年沒有參與培訓的員工離職率高
 
-4. 滿意度相關變量與員工離職與否的關係
+#### 4. 滿意度相關變量與員工離職與否的關係
 
 ```{r echo = FALSE}
 g15 <- ggplot(data, aes(x= JobSatisfaction, fill = Attrition)) +
@@ -130,10 +134,11 @@ g17 <- ggplot(data, aes(x= EnvironmentSatisfaction, fill = Attrition)) +
   labs(y="Percentage") +  scale_y_continuous(labels=percent)
 grid.arrange(g15, g16, g17,  ncol = 2)
 ```
- 
+
+##### 結論： 
 - 無論何種滿意度，滿意度較低員工的離職率大於滿意度較高員工
  
-5. 工作生活平衡與員工離職與否的關係
+#### 5. 工作生活平衡與員工離職與否的關係
 ```{r echo = FALSE}
 g18 <- ggplot(data, aes(x= OverTime, fill = Attrition)) +
   geom_bar(position = "fill") +
@@ -149,13 +154,18 @@ g21 <- ggplot(data, aes(x = DistanceFromHome, fill = Attrition)) +
 grid.arrange(g18, g19, g20, g21,  ncol = 2)
 ```
 
+##### 結論：
 - 經常加班的員工相對於不加班的員工離職率非常高
 - 認為工作與生活平衡水平為1的員工離職率較高
 - 頻繁出差的員工離職率較高高
 - 距離家較遠的員工離職率較高
 
-### 模型建立
-- Random Forest
+### Part 3. 模型建立：
+在對資料做完探索式分析後，
+會針對這些變數與離職的關係建立預測模型，
+此次將用到分類中的兩個常用模型分別為Random Forest 及 GBM
+
+#### Random Forest
 ```{r echo = FALSE}
 set.seed(3999) 
 # 刪除不需要的幾個變量
@@ -174,8 +184,15 @@ rocv <- roc(as.numeric(test$Attrition), as.numeric(preds))
 rocv$auc 
 prop.table(table(test$Attrition, preds, dnn = c("Actual", "Predicted")), 1)
 ```
+##### 結論：
+根據Random Forest跑出的結果可看出在初步嘗試下
+模型效度僅達AUC約0.63，並無太突出的表現。
 
-- GBM
+從混肴矩陣也可以觀察出模型於Recall上的表現僅有33%。
+
+
+#### GBM
+在使用GBM時，設定了樣本權重以解決樣本不均衡的問題
 ```{r echo = FALSE}
 set.seed(3799)
 # 加權GBM
@@ -200,3 +217,13 @@ rocweight$auc
 prop.table(table(test$Attrition, weightedpreds, dnn = c("Actual", "Predicted")),1)
 varImp(weightedfit)
 ```
+##### 結論：
+根據GBM跑出的結果可看出在樣本均衡校正下
+模型效度由原本AUC約0.63提升至0.74。
+
+同時從混肴矩陣也可以觀察出模型於Recall上的表現也進步許多。
+
+另外，亦可由GBM的變數權重觀察出變數的重要程度順序：
+前五重要性變數依序為：
+
+月薪、是否超時工作、股票選擇權、年齡及年資。
